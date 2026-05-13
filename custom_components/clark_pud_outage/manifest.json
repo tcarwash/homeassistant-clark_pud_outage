@@ -1,0 +1,11 @@
+{
+  "codeowners": ["@tcarwash"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/tcarwash/homeassistant-clark_pud_outage_data",
+  "domain": "clark_pud_outage",
+  "iot_class": "cloud_polling",
+  "name": "Clark PUD Outage Data",
+  "requirements": [],
+  "version": "1.1.0"
+}

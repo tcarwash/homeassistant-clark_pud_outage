@@ -1,0 +1,39 @@
+{
+  "config": {
+    "abort": {
+      "single_instance_allowed": "Only a single Clark PUD Outage Data configuration is allowed."
+    },
+    "step": {
+      "user": {
+        "title": "Clark PUD Outage Data",
+        "description": "Create a polling entry for Clark Public Utilities outage data."
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Clark PUD Outage Data",
+        "data": {
+          "scan_interval_minutes": "Update interval (minutes)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "total_affected_customer_count": {
+        "name": "Total affected customers"
+      },
+      "recently_restored_customer_count": {
+        "name": "Recently restored customers"
+      },
+      "open_outage_count": {
+        "name": "Open outages"
+      },
+      "generated": {
+        "name": "Data generated"
+      }
+    }
+  }
+}

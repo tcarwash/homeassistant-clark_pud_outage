@@ -32,6 +32,7 @@ SENSOR_DESCRIPTIONS: tuple[ClarkPUDSensorEntityDescription, ...] = (
         name="Total affected customers",
         translation_key="total_affected_customer_count",
         suggested_object_id="clark_pud_outage_total_affected_customers",
+        icon="mdi:account-group",
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ClarkPUDSensorEntityDescription(
@@ -39,6 +40,7 @@ SENSOR_DESCRIPTIONS: tuple[ClarkPUDSensorEntityDescription, ...] = (
         name="Recently restored customers",
         translation_key="recently_restored_customer_count",
         suggested_object_id="clark_pud_outage_recently_restored_customers",
+        icon="mdi:home-lightning-bolt-outline",
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ClarkPUDSensorEntityDescription(
@@ -46,6 +48,7 @@ SENSOR_DESCRIPTIONS: tuple[ClarkPUDSensorEntityDescription, ...] = (
         name="Open outages",
         translation_key="open_outage_count",
         suggested_object_id="clark_pud_outage_open_outages",
+        icon="mdi:flash-alert",
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ClarkPUDSensorEntityDescription(
@@ -53,6 +56,7 @@ SENSOR_DESCRIPTIONS: tuple[ClarkPUDSensorEntityDescription, ...] = (
         name="Data generated",
         translation_key="generated",
         suggested_object_id="clark_pud_outage_data_generated",
+        icon="mdi:clock-outline",
         device_class=SensorDeviceClass.TIMESTAMP,
     ),
 )

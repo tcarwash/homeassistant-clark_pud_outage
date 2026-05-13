@@ -55,7 +55,9 @@ def _parse_datetime(value: Any) -> datetime | None:
 
 def parse_data_js(payload: str) -> OutageSnapshot:
     """Parse JSONP response from data.js into an outage snapshot."""
-    match = re.search(r"gksUpdateOutageData\((.*)\)\s*;?\s*$", payload.strip(), re.DOTALL)
+    match = re.search(
+        r"gksUpdateOutageData\((.*)\)\s*;?\s*$", payload.strip(), re.DOTALL
+    )
     if not match:
         raise ClarkPUDOutageApiError("Invalid response shape from outage data endpoint")
 
@@ -65,7 +67,9 @@ def parse_data_js(payload: str) -> OutageSnapshot:
         raise ClarkPUDOutageApiError("Unable to decode outage data payload") from err
 
     if root.get("ok") is not True:
-        raise ClarkPUDOutageApiError("Outage data endpoint returned unsuccessful result")
+        raise ClarkPUDOutageApiError(
+            "Outage data endpoint returned unsuccessful result"
+        )
 
     result = root.get("result")
     if not isinstance(result, dict):
@@ -94,7 +98,9 @@ def parse_data_js(payload: str) -> OutageSnapshot:
     return OutageSnapshot(
         generated=_parse_datetime(result.get("generated")),
         total_affected_customer_count=int(result.get("totalAffectedCustomerCount", 0)),
-        recently_restored_customer_count=int(result.get("recentlyRestoredCustomerCount", 0)),
+        recently_restored_customer_count=int(
+            result.get("recentlyRestoredCustomerCount", 0)
+        ),
         open_outages=tuple(outages),
     )
 

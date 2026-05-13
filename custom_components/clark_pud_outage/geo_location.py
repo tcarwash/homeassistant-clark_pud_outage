@@ -30,7 +30,9 @@ async def async_setup_entry(
         for outage in coordinator.data.open_outages:
             if outage.key in entities:
                 continue
-            entities[outage.key] = ClarkPUDOutageGeoLocationEvent(coordinator, outage.key)
+            entities[outage.key] = ClarkPUDOutageGeoLocationEvent(
+                coordinator, outage.key
+            )
 
         for key in list(entities):
             if key in latest_keys:
@@ -57,7 +59,9 @@ class ClarkPUDOutageGeoLocationEvent(
     _attr_icon = "mdi:flash-alert"
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator: ClarkPUDOutageDataUpdateCoordinator, outage_key: str) -> None:
+    def __init__(
+        self, coordinator: ClarkPUDOutageDataUpdateCoordinator, outage_key: str
+    ) -> None:
         super().__init__(coordinator)
         self._outage_key = outage_key
         self._attr_unique_id = f"outage_{outage_key}"

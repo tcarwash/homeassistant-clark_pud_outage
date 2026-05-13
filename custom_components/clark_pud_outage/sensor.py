@@ -23,26 +23,36 @@ from .coordinator import ClarkPUDOutageDataUpdateCoordinator
 class ClarkPUDSensorEntityDescription(SensorEntityDescription):
     """Entity description for Clark PUD sensors."""
 
+    suggested_object_id: str
+
 
 SENSOR_DESCRIPTIONS: tuple[ClarkPUDSensorEntityDescription, ...] = (
     ClarkPUDSensorEntityDescription(
         key="total_affected_customer_count",
+        name="Total affected customers",
         translation_key="total_affected_customer_count",
+        suggested_object_id="clark_pud_outage_total_affected_customers",
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ClarkPUDSensorEntityDescription(
         key="recently_restored_customer_count",
+        name="Recently restored customers",
         translation_key="recently_restored_customer_count",
+        suggested_object_id="clark_pud_outage_recently_restored_customers",
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ClarkPUDSensorEntityDescription(
         key="open_outage_count",
+        name="Open outages",
         translation_key="open_outage_count",
+        suggested_object_id="clark_pud_outage_open_outages",
         state_class=SensorStateClass.MEASUREMENT,
     ),
     ClarkPUDSensorEntityDescription(
         key="generated",
+        name="Data generated",
         translation_key="generated",
+        suggested_object_id="clark_pud_outage_data_generated",
         device_class=SensorDeviceClass.TIMESTAMP,
     ),
 )
@@ -56,7 +66,7 @@ async def async_setup_entry(
     """Set up Clark PUD outage sensors from a config entry."""
     coordinator: ClarkPUDOutageDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
-        ClarkPUDSensorEntity(coordinator, entry.entry_id, description)
+        ClarkPUDSensorEntity(coordinator, description)
         for description in SENSOR_DESCRIPTIONS
     )
 
@@ -72,13 +82,13 @@ class ClarkPUDSensorEntity(
     def __init__(
         self,
         coordinator: ClarkPUDOutageDataUpdateCoordinator,
-        entry_id: str,
         entity_description: ClarkPUDSensorEntityDescription,
     ) -> None:
         super().__init__(coordinator)
         self.entity_description = entity_description
-        self._attr_unique_id = f"{entry_id}_{entity_description.key}"
+        self._attr_unique_id = f"summary_{entity_description.key}"
         self._attr_has_entity_name = True
+        self._attr_suggested_object_id = entity_description.suggested_object_id
 
     @property
     def native_value(self):

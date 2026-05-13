@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable
 from typing import Any
 
 from homeassistant.components.geo_location import GeolocationEvent
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import Outage
 from .const import DOMAIN
@@ -26,13 +25,14 @@ async def async_setup_entry(
     @callback
     def _sync_entities() -> None:
         latest_keys = {outage.key for outage in coordinator.data.open_outages}
+        new_entities: list[ClarkPUDOutageGeoLocationEvent] = []
 
         for outage in coordinator.data.open_outages:
             if outage.key in entities:
                 continue
-            entities[outage.key] = ClarkPUDOutageGeoLocationEvent(
-                coordinator, outage.key
-            )
+            entity = ClarkPUDOutageGeoLocationEvent(coordinator, outage.key)
+            entities[outage.key] = entity
+            new_entities.append(entity)
 
         for key in list(entities):
             if key in latest_keys:
@@ -40,9 +40,6 @@ async def async_setup_entry(
             hass.async_create_task(entities[key].async_remove())
             del entities[key]
 
-        new_entities = [
-            entity for key, entity in entities.items() if not entity.added_to_hass
-        ]
         if new_entities:
             async_add_entities(new_entities)
 
@@ -51,66 +48,64 @@ async def async_setup_entry(
 
 
 class ClarkPUDOutageGeoLocationEvent(
-    CoordinatorEntity[ClarkPUDOutageDataUpdateCoordinator],
     GeolocationEvent,
 ):
     """Map event for a single Clark PUD outage."""
 
     _attr_icon = "mdi:flash-alert"
     _attr_has_entity_name = True
+    _attr_source = DOMAIN
 
     def __init__(
         self, coordinator: ClarkPUDOutageDataUpdateCoordinator, outage_key: str
     ) -> None:
-        super().__init__(coordinator)
+        super().__init__()
+        self.coordinator = coordinator
         self._outage_key = outage_key
         self._attr_unique_id = f"outage_{outage_key}"
+        self._attr_external_id = outage_key
+        self._attr_name = f"Outage {outage_key}"
+        self._unsub_coordinator: Callable[[], None] | None = None
+        self._update_attributes()
 
-    @property
-    def _outage(self) -> Outage | None:
+    def _find_outage(self) -> Outage | None:
         for outage in self.coordinator.data.open_outages:
             if outage.key == self._outage_key:
                 return outage
         return None
 
-    @property
-    def source(self) -> str:
-        """Return the source of the event."""
-        return DOMAIN
-
-    @property
-    def name(self) -> str:
-        """Return the event name."""
-        return f"Outage {self._outage_key}"
-
-    @property
-    def external_id(self) -> str:
-        """Return a unique id from the source."""
-        return self._outage_key
-
-    @property
-    def latitude(self) -> float | None:
-        """Return latitude for the event."""
-        outage = self._outage
-        return outage.lat if outage else None
-
-    @property
-    def longitude(self) -> float | None:
-        """Return longitude for the event."""
-        outage = self._outage
-        return outage.lon if outage else None
-
-    @property
-    def extra_state_attributes(self) -> Mapping[str, Any]:
-        """Return event details in attributes."""
-        outage = self._outage
+    def _update_attributes(self) -> None:
+        outage = self._find_outage()
         if outage is None:
-            return {}
+            self._attr_latitude = None
+            self._attr_longitude = None
+            self._attr_extra_state_attributes = {}
+            return
 
-        return {
+        self._attr_latitude = outage.lat
+        self._attr_longitude = outage.lon
+        self._attr_extra_state_attributes = {
             "affected_customer_count": outage.affected_customer_count,
             "reported": outage.reported,
             "estimated_restoration": outage.estimated_restoration,
             "cause": outage.cause,
             "status": outage.status,
         }
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to coordinator updates when entity is added."""
+        await super().async_added_to_hass()
+
+        @callback
+        def _handle_update() -> None:
+            self._update_attributes()
+            self.async_write_ha_state()
+
+        self._unsub_coordinator = self.coordinator.async_add_listener(_handle_update)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Unsubscribe from coordinator updates when entity is removed."""
+        if self._unsub_coordinator is not None:
+            self._unsub_coordinator()
+            self._unsub_coordinator = None
+        await super().async_will_remove_from_hass()

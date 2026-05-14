@@ -6,10 +6,11 @@ from typing import Any
 from homeassistant.components.geo_location import GeolocationEvent
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api import Outage
-from .const import DOMAIN
+from .const import DOMAIN, OUTAGE_ENTITY_EXPIRATION
 from .coordinator import ClarkPUDOutageDataUpdateCoordinator
 
 
@@ -37,8 +38,7 @@ async def async_setup_entry(
         for key in list(entities):
             if key in latest_keys:
                 continue
-            hass.async_create_task(entities[key].async_remove())
-            del entities[key]
+            entities[key].set_missing()
 
         if new_entities:
             async_add_entities(new_entities)
@@ -66,6 +66,8 @@ class ClarkPUDOutageGeoLocationEvent(
         self._attr_external_id = outage_key
         self._attr_name = f"Outage {outage_key}"
         self._unsub_coordinator: Callable[[], None] | None = None
+        self._unsub_expiration: Callable[[], None] | None = None
+        self._missing = False
         self._update_attributes()
 
     def _find_outage(self) -> Outage | None:
@@ -77,11 +79,16 @@ class ClarkPUDOutageGeoLocationEvent(
     def _update_attributes(self) -> None:
         outage = self._find_outage()
         if outage is None:
+            self._missing = True
             self._attr_latitude = None
             self._attr_longitude = None
             self._attr_extra_state_attributes = {}
             return
 
+        self._missing = False
+        if self._unsub_expiration is not None:
+            self._unsub_expiration()
+            self._unsub_expiration = None
         self._attr_latitude = outage.lat
         self._attr_longitude = outage.lon
         self._attr_extra_state_attributes = {
@@ -91,6 +98,28 @@ class ClarkPUDOutageGeoLocationEvent(
             "cause": outage.cause,
             "status": outage.status,
         }
+
+    @callback
+    def set_missing(self) -> None:
+        """Mark the outage as missing and schedule removal after the grace period."""
+        self._update_attributes()
+        self.async_write_ha_state()
+
+        if self._unsub_expiration is not None:
+            return
+
+        async def _expire(_now) -> None:
+            if self._find_outage() is not None:
+                self._unsub_expiration = None
+                return
+
+            await self.async_remove()
+
+        self._unsub_expiration = async_call_later(
+            self.hass,
+            OUTAGE_ENTITY_EXPIRATION,
+            _expire,
+        )
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to coordinator updates when entity is added."""
@@ -108,4 +137,7 @@ class ClarkPUDOutageGeoLocationEvent(
         if self._unsub_coordinator is not None:
             self._unsub_coordinator()
             self._unsub_coordinator = None
+        if self._unsub_expiration is not None:
+            self._unsub_expiration()
+            self._unsub_expiration = None
         await super().async_will_remove_from_hass()
